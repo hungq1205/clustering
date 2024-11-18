@@ -1,13 +1,8 @@
 #ifndef CMEANS_H
 #define CMEANS_H
 
+#include "point.h"
 #include <QVector>
-
-struct Point {
-    double x, y;
-    Point() : x(0.0), y(0.0) {}
-    Point(double x, double y) : x(x), y(y) {}
-};
 
 class CMeans
 {

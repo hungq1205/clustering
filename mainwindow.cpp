@@ -1,13 +1,14 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "cmeans.h"
 #include <QRandomGenerator>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , cmeans(CMeans(3, 3))
 {
     ui->setupUi(this);
+    ui->colormap->setRegionNum(3);
 }
 
 MainWindow::~MainWindow()
@@ -17,23 +18,10 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_button_clicked()
 {
-    int cluster = 3;
-    double m = 3;
-    int dataCount = 100;
-    int maxIterations = 100;
-
-    ui->colormap->setRegionNum(cluster);
+    cmeans.fit(ui->colormap->points, maxIters);
 
     int w = ui->colormap->width();
     int h = ui->colormap->height();
-    auto rand = QRandomGenerator::global();
-    QVector<Point> data{};
-    for (int i = 0; i < dataCount; i++)
-        data.append(Point(rand->generate() % w, rand->generate() % h));
-
-    CMeans cmeans(cluster, m);
-    cmeans.fit(data, maxIterations);
-
     for (int i = 0; i < w; i++)
         for (int j = 0; j < h; j++)
         {
@@ -41,9 +29,32 @@ void MainWindow::on_button_clicked()
             ui->colormap->setPixel(i, j, enc);
         }
 
-    for (auto p : data)
-        ui->colormap->setPixel(p.x, p.y, Qt::white);
-
     ui->colormap->render();
+}
+
+
+void MainWindow::on_pointClearBtn_clicked()
+{
+    ui->colormap->points.clear();
+    ui->colormap->render();
+}
+
+
+void MainWindow::on_cluster_input_valueChanged(int clusterNum)
+{
+    cmeans = CMeans(clusterNum, ui->m_input->value());
+    ui->colormap->setRegionNum(clusterNum);
+}
+
+
+void MainWindow::on_iter_input_valueChanged(int iters)
+{
+    maxIters = iters;
+}
+
+
+void MainWindow::on_m_input_valueChanged(double m)
+{
+    cmeans = CMeans(ui->cluster_input->value(), m);
 }
 

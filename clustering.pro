@@ -17,7 +17,8 @@ SOURCES += \
 HEADERS += \
     cmeans.h \
     colormap.h \
-    mainwindow.h
+    mainwindow.h \
+    point.h
 
 FORMS += \
     mainwindow.ui

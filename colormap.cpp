@@ -1,8 +1,7 @@
 #include "colormap.h"
 #include <QPainter>
-#include <QApplication>
-#include <QDebug>
 #include <QRandomGenerator>
+#include <QMouseEvent>
 
 ColorMap::ColorMap(QWidget *parent) : QWidget(parent)
 {
@@ -15,6 +14,11 @@ void ColorMap::render()
     update();
 }
 
+void ColorMap::mouseReleaseEvent(QMouseEvent* e) {
+    points.append(Point(e->pos().x(), e->pos().y()));
+    render();
+}
+
 void ColorMap::paintEvent(QPaintEvent* e)
 {
     if (image.isNull() || image.width() != width() || image.height() != height())
@@ -24,6 +28,15 @@ void ColorMap::paintEvent(QPaintEvent* e)
     }
     QPainter painter(this);
     painter.drawImage(0, 0, image);
+
+    QPen pen;
+    pen.setColor(Qt::white);
+    painter.setPen(pen);
+    painter.setBrush(QBrush(Qt::white));
+    for (auto p : points)
+    {
+        painter.drawEllipse(QPoint(p.x, p.y), pointRad, pointRad);
+    }
 }
 
 void ColorMap::setPixel(int x, int y, const QColor& color)

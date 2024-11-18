@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "cmeans.h"
 #include <QMainWindow>
 
 QT_BEGIN_NAMESPACE
@@ -19,8 +20,17 @@ public:
 
 private slots:
     void on_button_clicked();
+    void on_pointClearBtn_clicked();
+
+    void on_cluster_input_valueChanged(int arg1);
+
+    void on_iter_input_valueChanged(int arg1);
+
+    void on_m_input_valueChanged(double arg1);
 
 private:
     Ui::MainWindow *ui;
+    CMeans cmeans;
+    int maxIters = 250;
 };
 #endif // MAINWINDOW_H
