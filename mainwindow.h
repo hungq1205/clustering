@@ -22,11 +22,11 @@ private slots:
     void on_button_clicked();
     void on_pointClearBtn_clicked();
 
-    void on_cluster_input_valueChanged(int arg1);
+    void on_cluster_input_valueChanged(int cluster);
 
-    void on_iter_input_valueChanged(int arg1);
+    void on_iter_input_valueChanged(int iters);
 
-    void on_m_input_valueChanged(double arg1);
+    void on_m_input_valueChanged(double m);
 
 private:
     Ui::MainWindow *ui;

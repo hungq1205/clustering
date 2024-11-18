@@ -55,6 +55,8 @@ void MainWindow::on_iter_input_valueChanged(int iters)
 
 void MainWindow::on_m_input_valueChanged(double m)
 {
+    if (m <= 1)
+        m = 1.000001;
     cmeans = CMeans(ui->cluster_input->value(), m);
 }
 
