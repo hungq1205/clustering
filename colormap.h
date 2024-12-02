@@ -10,27 +10,30 @@ class ColorMap : public QWidget
 {
     Q_OBJECT
 public:
-    QVector<Point> points;
-    int pointRad = 4;
+    static bool isSupervising;
+    QVector<Point*> *points;
+    int pointRad = 6;
 
     explicit ColorMap(QWidget *parent = nullptr);
-    void render();
+    void render(QVector<Point*> *points = nullptr);
     void setPixel(int x, int y, const QColor& color);
-    void setPixel(int x, int y, QVector<double>& encodings);
+    void setPixel(int x, int y, QList<double>& encodings);
     void setRegionNum(int n);
     int getRegionNum() const;
 
 protected:
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
 
 private:
     static QColor scaleColor(const QColor& color, double val);
     static QColor addColors(const QColor& a, const QColor& b);
+    QColor colorOf(QList<double>& enc, bool whitePadding=true);
 
+    QVector<QColor> colors;
     int regionNum;
     QImage image;
-    QVector<QColor> colors;
 };
 
 #endif // COLORMAP_H

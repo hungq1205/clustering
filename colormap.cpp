@@ -2,27 +2,51 @@
 #include <QPainter>
 #include <QRandomGenerator>
 #include <QMouseEvent>
+#include "QDebug"
+#include "mainwindow.h"
+#include "clustermethod.h"
 
-ColorMap::ColorMap(QWidget *parent) : QWidget(parent)
-{
+bool ColorMap::isSupervising = false;
+
+ColorMap::ColorMap(QWidget *parent) : QWidget(parent) {
     colors = { Qt::red, Qt::green, Qt::blue, Qt::yellow, Qt::magenta, Qt::cyan,
                Qt::darkRed, Qt::darkGreen, Qt::darkBlue, Qt::darkYellow, Qt::darkMagenta, Qt::darkCyan };
+    points = new QVector<Point*>;
 }
 
-void ColorMap::render()
-{
+void ColorMap::render(QVector<Point*> *points) {
+    if (points != nullptr && this->points != points) {
+        delete this->points;
+        this->points = points;
+    }
     update();
 }
 
 void ColorMap::mouseReleaseEvent(QMouseEvent* e) {
-    points.append(Point(e->pos().x(), e->pos().y()));
+    if (isSupervising) return;
+
+    points->append(new Point(e->pos().x(), e->pos().y()));
     render();
 }
 
-void ColorMap::paintEvent(QPaintEvent* e)
-{
-    if (image.isNull() || image.width() != width() || image.height() != height())
-    {
+void ColorMap::mouseDoubleClickEvent(QMouseEvent* e) {
+    if (!isSupervising) return;
+
+    Point mpos = Point(e->pos().x(), e->pos().y());
+    double dmin = pointRad + 1;
+    for (auto p : *points) {
+        double d = ClusterMethod::euclideanDistance(*p, mpos);
+        if (d <= pointRad && d < dmin) {
+            dmin = d;
+            MainWindow::supervisorw->target = p;
+            MainWindow::supervisorw->show();
+            render();
+        }
+    }
+}
+
+void ColorMap::paintEvent(QPaintEvent* e) {
+    if (image.isNull() || image.width() != width() || image.height() != height()) {
         image = QImage(width(), height(), QImage::Format_RGB32);
         image.fill(Qt::black);
     }
@@ -33,28 +57,47 @@ void ColorMap::paintEvent(QPaintEvent* e)
     pen.setColor(Qt::white);
     painter.setPen(pen);
     painter.setBrush(QBrush(Qt::white));
-    for (auto p : points)
-    {
-        painter.drawEllipse(QPoint(p.x, p.y), pointRad, pointRad);
+    for (auto p : *points) {
+        auto it = MainWindow::supervisedData->find(*p);
+        if (it == MainWindow::supervisedData->end())
+            painter.drawEllipse(QPoint(p->x[MainWindow::xfield], p->x[MainWindow::yfield]), pointRad, pointRad);
+        else {
+            QColor color = colorOf(it.value());
+            pen.setColor(color);
+            painter.setPen(pen);
+            painter.setBrush(QBrush(color));
+            painter.drawEllipse(QPoint(p->x[MainWindow::xfield], p->x[MainWindow::yfield]), pointRad, pointRad);
+            pen.setColor(Qt::white);
+            painter.setPen(pen);
+            painter.setBrush(QBrush(Qt::white));
+        }
     }
 }
 
-void ColorMap::setPixel(int x, int y, const QColor& color)
-{
+void ColorMap::setPixel(int x, int y, const QColor& color) {
     if (x >= 0 && x < image.width() && y >= 0 && y < image.height())
         image.setPixelColor(x, y, color);
 }
 
-void ColorMap::setPixel(int x, int y, QVector<double>& encodings)
-{
-    QColor color = Qt::black;
-    for (int i = 0; i < regionNum; i++)
-        color = addColors(scaleColor(colors[i], encodings[i]), color);
-    setPixel(x, y, color);
+void ColorMap::setPixel(int x, int y, QList<double>& encodings) {
+    setPixel(x, y, colorOf(encodings, false));
 }
 
-void ColorMap::setRegionNum(int n)
-{
+QColor ColorMap::colorOf(QList<double>& enc, bool whitePadding) {
+    QColor color = Qt::black;
+    if (whitePadding) {
+        double supplement = 1.0;
+        for (auto it : enc)
+            supplement -= it;
+        color = scaleColor(Qt::white, supplement);
+    }
+
+    for (int i = 0; i < regionNum; i++)
+        color = addColors(scaleColor(colors[i], enc[i]), color);
+    return color;
+}
+
+void ColorMap::setRegionNum(int n) {
     auto rand = QRandomGenerator::global();
     if (regionNum < n)
         for (int i = regionNum; i < n; i++)
@@ -62,13 +105,11 @@ void ColorMap::setRegionNum(int n)
     regionNum = n;
 }
 
-int ColorMap::getRegionNum() const
-{
+int ColorMap::getRegionNum() const {
     return regionNum;
 }
 
-QColor ColorMap::scaleColor(const QColor& color, double val)
-{
+QColor ColorMap::scaleColor(const QColor& color, double val) {
     int red = static_cast<int>(color.red() * val);
     int green = static_cast<int>(color.green() * val);
     int blue = static_cast<int>(color.blue() * val);
@@ -80,8 +121,7 @@ QColor ColorMap::scaleColor(const QColor& color, double val)
     return QColor(red, green, blue);
 }
 
-QColor ColorMap::addColors(const QColor& a, const QColor& b)
-{
+QColor ColorMap::addColors(const QColor& a, const QColor& b) {
     int red = a.red() + b.red();
     int green = a.green() + b.green();
     int blue = a.blue() + b.blue();
