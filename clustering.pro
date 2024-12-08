@@ -12,6 +12,7 @@ SOURCES += \
     clustermethod.cpp \
     cmeans.cpp \
     colormap.cpp \
+    datapointview.cpp \
     datautility.cpp \
     main.cpp \
     mainwindow.cpp \
@@ -22,6 +23,7 @@ HEADERS += \
     clustermethod.h \
     cmeans.h \
     colormap.h \
+    datapointview.h \
     datautility.h \
     mainwindow.h \
     point.h \
@@ -29,6 +31,7 @@ HEADERS += \
     supervisorwindow.h
 
 FORMS += \
+    datapointview.ui \
     mainwindow.ui \
     supervisorwindow.ui
 

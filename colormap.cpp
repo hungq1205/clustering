@@ -11,13 +11,12 @@ bool ColorMap::isSupervising = false;
 ColorMap::ColorMap(QWidget *parent) : QWidget(parent) {
     colors = { Qt::red, Qt::green, Qt::blue, Qt::yellow, Qt::magenta, Qt::cyan,
                Qt::darkRed, Qt::darkGreen, Qt::darkBlue, Qt::darkYellow, Qt::darkMagenta, Qt::darkCyan };
-    points = new QVector<Point*>;
 }
 
 void ColorMap::render(QVector<Point*> *points) {
-    if (points != nullptr && this->points != points) {
-        delete this->points;
-        this->points = points;
+    if (points != nullptr && MainWindow::points != points) {
+        delete MainWindow::points;
+        MainWindow::points = points;
     }
     update();
 }
@@ -25,7 +24,7 @@ void ColorMap::render(QVector<Point*> *points) {
 void ColorMap::mouseReleaseEvent(QMouseEvent* e) {
     if (isSupervising) return;
 
-    points->append(new Point(e->pos().x(), e->pos().y()));
+    MainWindow::points->append(new Point(e->pos().x(), e->pos().y()));
     render();
 }
 
@@ -34,11 +33,10 @@ void ColorMap::mouseDoubleClickEvent(QMouseEvent* e) {
 
     Point mpos = Point(e->pos().x(), e->pos().y());
     double dmin = pointRad + 1;
-    for (auto p : *points) {
+    for (auto p : *MainWindow::points) {
         double d = ClusterMethod::euclideanDistance(*p, mpos);
         if (d <= pointRad && d < dmin) {
             dmin = d;
-            MainWindow::supervisorw->target = p;
             MainWindow::supervisorw->show();
             render();
         }
@@ -57,7 +55,7 @@ void ColorMap::paintEvent(QPaintEvent* e) {
     pen.setColor(Qt::white);
     painter.setPen(pen);
     painter.setBrush(QBrush(Qt::white));
-    for (auto p : *points) {
+    for (auto p : *MainWindow::points) {
         auto it = MainWindow::supervisedData->find(*p);
         if (it == MainWindow::supervisedData->end())
             painter.drawEllipse(QPoint(p->x[MainWindow::xfield], p->x[MainWindow::yfield]), pointRad, pointRad);

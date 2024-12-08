@@ -11,7 +11,6 @@ class ColorMap : public QWidget
     Q_OBJECT
 public:
     static bool isSupervising;
-    QVector<Point*> *points;
     int pointRad = 6;
 
     explicit ColorMap(QWidget *parent = nullptr);

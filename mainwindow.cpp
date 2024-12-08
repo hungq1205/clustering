@@ -8,11 +8,16 @@
 
 SupervisorWindow *MainWindow::supervisorw = nullptr;
 QMap<Point, QList<double>> *MainWindow::supervisedData;
-QStringList *MainWindow::labels;
+QVector<Point*> *MainWindow::points, *MainWindow::inferPoints;
+QList<bool> *MainWindow::inferables;
+QVector<DatapointView*> *MainWindow::pointViews;
+QStringList *MainWindow::xlabels;
+QStringList *MainWindow::ylabels;
 int MainWindow::distanceMetricIdx = 0;
 int MainWindow::xfield = 0;
 int MainWindow::yfield = 0;
 QString MainWindow::projDir;
+ClusterMethod *MainWindow::cmethod;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -33,16 +38,32 @@ MainWindow::MainWindow(QWidget *parent)
     ui->distanceMetric->addItem("Euclidean");
     ui->distanceMetric->addItem("Entropy");
 
-    labels = new QStringList();
-    labels->append("x");
-    labels->append("y");
-    ui->labelCBoxA->addItems(*labels);
-    ui->labelCBoxB->addItems(*labels);
+    xlabels = new QStringList();
+    xlabels->append("x");
+    xlabels->append("y");
+    ui->labelCBoxA->addItems(*xlabels);
+    ui->labelCBoxB->addItems(*xlabels);
     ui->labelCBoxB->setCurrentIndex(1);
+
+    ylabels = new QStringList();
+    ylabels->append("1");
+    ylabels->append("2");
+    ylabels->append("3");
+
+    ui->dataViewContainer->setVisible(false);
+
+    pointViews = new QVector<DatapointView*>;
+    points = new QVector<Point*>;
+    inferPoints = new QVector<Point*>;
+    inferables = new QList<bool>;
+    inferables->append(true);
+    inferables->append(true);
 
     supervisedData = new QMap<Point, QList<double>>();
     supervisorw = new SupervisorWindow;
-    supervisorw->InitFields(3);
+    supervisorw->InitFields(3, *ylabels);
+    DatapointView::xValSupervisor = new SupervisorWindow();
+    DatapointView::yValSupervisor = new SupervisorWindow();
     distanceMetricIdx = 0;
     xfield = ui->labelCBoxA->currentIndex();
     yfield = ui->labelCBoxB->currentIndex();
@@ -51,6 +72,25 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow() {
     delete ui;
+}
+
+void MainWindow::SwitchDisplayMode(bool isColorMap) {
+    this->isColorMap = isColorMap;
+    ui->colormap->setVisible(isColorMap);
+    ui->dataViewContainer->setVisible(!isColorMap);
+}
+
+void MainWindow::writePoint(int idx, const QList<double>& val) {
+    int j = 0;
+    for (int i = 0; i < val.size(); i++)
+    {
+        (*points)[idx]->x[i] = val[i];
+        if ((*inferables)[i])
+        {
+            (*inferPoints)[idx]->x[j] = val[i];
+            j++;
+        }
+    }
 }
 
 void MainWindow::fit() {
@@ -67,24 +107,30 @@ void MainWindow::fit() {
         break;
     }
 
-    cmethod->fit(*(ui->colormap->points), maxIters);
+    cmethod->fit(*inferPoints, maxIters);
 
-    int w = ui->colormap->width();
-    int h = ui->colormap->height();
-    xfield = ui->labelCBoxA->currentIndex();
-    yfield = ui->labelCBoxB->currentIndex();
-    int n = (*ui->colormap->points)[0]->x.size();
-    for (int i = 0; i < w; i++)
-        for (int j = 0; j < h; j++)
-        {
-            QList<double> px(n);
-            px[xfield] = i;
-            px[yfield] = j;
-            QVector<double> enc = cmethod->predict(Point(px));
-            ui->colormap->setPixel(i, j, enc);
-        }
+    if (isColorMap) {
+        int w = ui->colormap->width();
+        int h = ui->colormap->height();
+        xfield = ui->labelCBoxA->currentIndex();
+        yfield = ui->labelCBoxB->currentIndex();
+        int n = (*inferPoints)[0]->x.size();
+        for (int i = 0; i < w; i++)
+            for (int j = 0; j < h; j++)
+            {
+                QList<double> px(n);
+                px[xfield] = i;
+                px[yfield] = j;
+                QVector<double> enc = cmethod->predict(Point(px));
+                ui->colormap->setPixel(i, j, enc);
+            }
 
-    ui->colormap->render();
+        ui->colormap->render();
+    }
+    else {
+        for (auto v : *pointViews)
+            v->UpdateLabel();
+    }
 }
 
 void MainWindow::on_button_clicked() {
@@ -93,14 +139,17 @@ void MainWindow::on_button_clicked() {
 
 void MainWindow::on_pointClearBtn_clicked() {
     supervisedData->clear();
-    ui->colormap->points->clear();
+    points->clear();
+    inferPoints->clear();
+    pointViews->clear();
+    SwitchDisplayMode(true);
     ui->colormap->render();
 }
 
 void MainWindow::on_cluster_input_valueChanged(int clusterNum) {
     delete supervisorw;
     supervisorw = new SupervisorWindow();
-    supervisorw->InitFields(clusterNum);
+    supervisorw->InitFields(clusterNum, *ylabels);
     ui->colormap->setRegionNum(clusterNum);
 }
 
@@ -139,17 +188,49 @@ void MainWindow::on_dataBrowser_clicked() {
         QString fn = dialog.selectedFiles().constFirst();
         ui->dataPath->setText(fn);
         auto it = DataUtility::readData(fn);
-        labels = &std::get<0>(*it);
+        xlabels = &std::get<1>(*it);
         ui->labelCBoxA->clear();
-        ui->labelCBoxA->addItems(*labels);
+        ui->labelCBoxA->addItems(*xlabels);
         ui->labelCBoxB->clear();
-        ui->labelCBoxB->addItems(*labels);
+        ui->labelCBoxB->addItems(*xlabels);
         ui->labelCBoxB->setCurrentIndex(1);
         xfield = ui->labelCBoxA->currentIndex();
         yfield = ui->labelCBoxB->currentIndex();
 
-        delete ui->colormap->points;
-        ui->colormap->points = &std::get<1>(*it);
+        for (auto v : *pointViews)
+            v->deleteLater();
+        pointViews->clear();
+
+        ylabels->clear();
+        delete ylabels;
+        ylabels = new QStringList();
+        for (int i = 0; i < ui->cluster_input->value(); i++)
+            ylabels->append(QString::number(i + 1));
+        supervisorw->InitFields(ylabels->size(), *ylabels);
+        DatapointView::xValSupervisor->InitFields(xlabels->size(), *xlabels);
+        DatapointView::yValSupervisor->InitFields(ylabels->size(), *ylabels, true);
+
+        delete inferables;
+        inferables = &std::get<0>(*it);
+
+        for (auto p : *inferPoints)
+            delete p;
+        delete inferPoints;
+        inferPoints = &std::get<2>(*it);
+
+        for (auto p : *points)
+            delete p;
+        delete points;
+        points = &std::get<3>(*it);
+
+        SwitchDisplayMode(false);
+        for (int i = 0; i < points->size(); i++) {
+            DatapointView *pv = new DatapointView(this);
+            ui->dataviewList->addWidget(pv);
+            pointViews->append(pv);
+            pv->SetPointIndex(i);
+            pv->SetColor(i % 2 == 0);
+        }
     }
 }
 
@@ -163,13 +244,43 @@ void MainWindow::on_supervisedDataBrowser_clicked() {
     if (dialog.exec()) {
         QString fn = dialog.selectedFiles().constFirst();
         ui->supervisedDataPath->setText(fn);
-        delete supervisedData;
-        supervisedData = DataUtility::readSupervisedData(fn);
+        auto sdata = DataUtility::readSupervisedData(fn);
+        supervisedData->clear();
+        ylabels->clear();
+        ylabels = &std::get<0>(*sdata);
+        supervisedData = std::get<1>(*sdata);
+        supervisorw->InitFields(ylabels->size(), *ylabels);
+        DatapointView::yValSupervisor->InitFields(ylabels->size(), *ylabels, true);
+
+        for (auto v : *pointViews)
+            v->UpdateSupervisedData();
     }
 }
 
 void MainWindow::on_exportBtn_clicked() {
     fit();
     DataUtility::writeData(projDir + "/output/centroids.txt", cmethod->centroids);
+}
+
+
+void MainWindow::on_labelCBoxA_currentIndexChanged(int index)
+{
+    xfield = index;
+    if (!isColorMap)
+    {
+        for (auto v : *pointViews)
+            v->UpdateData();
+    }
+}
+
+
+void MainWindow::on_labelCBoxB_currentIndexChanged(int index)
+{
+    yfield = index;
+    if (!isColorMap)
+    {
+        for (auto v : *pointViews)
+            v->UpdateData();
+    }
 }
 
