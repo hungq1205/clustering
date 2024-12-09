@@ -85,7 +85,7 @@ void MainWindow::writePoint(int idx, const QList<double>& val) {
     for (int i = 0; i < val.size(); i++)
     {
         (*points)[idx]->x[i] = val[i];
-        if ((*inferables)[i])
+        if (inferables == nullptr || (*inferables)[i])
         {
             (*inferPoints)[idx]->x[j] = val[i];
             j++;
@@ -147,6 +147,10 @@ void MainWindow::on_pointClearBtn_clicked() {
 }
 
 void MainWindow::on_cluster_input_valueChanged(int clusterNum) {
+    ylabels = new QStringList();
+    for (int i = 0; i < clusterNum; i++)
+        ylabels->append(QString::number(i));
+
     delete supervisorw;
     supervisorw = new SupervisorWindow();
     supervisorw->InitFields(clusterNum, *ylabels);

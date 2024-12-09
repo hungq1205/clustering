@@ -25,6 +25,7 @@ void ColorMap::mouseReleaseEvent(QMouseEvent* e) {
     if (isSupervising) return;
 
     MainWindow::points->append(new Point(e->pos().x(), e->pos().y()));
+    MainWindow::inferPoints->append(new Point(e->pos().x(), e->pos().y()));
     render();
 }
 
@@ -33,14 +34,17 @@ void ColorMap::mouseDoubleClickEvent(QMouseEvent* e) {
 
     Point mpos = Point(e->pos().x(), e->pos().y());
     double dmin = pointRad + 1;
-    for (auto p : *MainWindow::points) {
-        double d = ClusterMethod::euclideanDistance(*p, mpos);
+    int min = 0;
+    for (int i = 1; i < MainWindow::points->size(); i++) {
+        double d = ClusterMethod::euclideanDistance(*((*MainWindow::points)[i]), mpos);
         if (d <= pointRad && d < dmin) {
             dmin = d;
-            MainWindow::supervisorw->show();
-            render();
+            min = i;
         }
     }
+    MainWindow::supervisorw->SetupSupervised(min);
+    MainWindow::supervisorw->show();
+    render();
 }
 
 void ColorMap::paintEvent(QPaintEvent* e) {

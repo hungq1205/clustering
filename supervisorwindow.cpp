@@ -115,14 +115,16 @@ void SupervisorWindow::closeEvent(QCloseEvent *e) {
             delete data;
             MainWindow::supervisedData->remove(*(*MainWindow::points)[writePointIdx]);
         }
-        (*MainWindow::pointViews)[writePointIdx]->UpdateSupervisedData();
+        if (MainWindow::pointViews != nullptr && MainWindow::pointViews->size() > writePointIdx)
+            (*MainWindow::pointViews)[writePointIdx]->UpdateSupervisedData();
     }
     else {
         QList<double> vals;
         for (int i = 0; i < fields.size(); i++)
             vals.append(fields[i]->value());
         MainWindow::writePoint(writePointIdx, vals);
-        (*MainWindow::pointViews)[writePointIdx]->UpdateData();
+        if (MainWindow::pointViews != nullptr && MainWindow::pointViews->size() > writePointIdx)
+            (*MainWindow::pointViews)[writePointIdx]->UpdateData();
     }
 }
 
