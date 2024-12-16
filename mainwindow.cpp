@@ -135,6 +135,21 @@ void MainWindow::fit() {
 
 void MainWindow::on_button_clicked() {
     fit();
+    if (points->length() == 150)
+    {
+        double cor = 0;
+        for (int i = 0; i < 150; i++)
+        {
+            QList<double> pred = cmethod->predict(*((*inferPoints)[i]));
+            int max = 0;
+            for (int c = 1; c < 3; c++)
+                if (pred[max] < pred[c])
+                    max = c;
+            if (max == i / 50)
+                cor += 1.0;
+        }
+        qDebug() << "Accuracy: " << cor / 1.5 << "%";
+    }
 }
 
 void MainWindow::on_pointClearBtn_clicked() {

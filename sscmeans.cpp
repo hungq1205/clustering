@@ -18,7 +18,7 @@ void SSCMeans::fit(QList<Point*>& data, int maxIters, double epsilon) {
     for (int i = 0; i < n; ++i) {
         double sum = 0;
         for (int j = 0; j < c; ++j) {
-            U[i][j] = rand->generate() % 500;
+            U[i][j] = rand->bounded(1.0);
             sum += U[i][j];
         }
 
@@ -34,13 +34,20 @@ void SSCMeans::fit(QList<Point*>& data, int maxIters, double epsilon) {
         for (int j = 0; j < c; ++j) {
             QList<double> cen(dim);
             for (int i = 0; i < n; ++i) {
-                double u_ij = pow(U[i][j], m);
+                auto find = supervised.find(*((*MainWindow::points)[i]));
+                double u_ij = 0;
+                if (find == supervised.end())
+                    u_ij = pow(U[i][j], m);
+                else
+                    u_ij = pow(abs(find.value()[j] - U[i][j]), m);
+
                 for (int d = 0; d < dim; d++)
                     cen[d] += u_ij * data[i]->x[d];
                 denom[j] += u_ij;
             }
-            for (int d = 0; d < dim; d++)
-                cen[d] /= denom[j];
+            if (denom[j] > 0.001)
+                for (int d = 0; d < dim; d++)
+                    cen[d] /= denom[j];
             centroids[j] = new Point(cen);
         }
 
